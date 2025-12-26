@@ -80,19 +80,26 @@
     ```
 
 3.  **Environment Configuration**
-    Create a `.env` file in the root directory:
+    Copy the `.env.sample` file to `.env` and fill in the values:
+
+    ```bash
+    cp .env.sample .env
+    ```
+
+    Or manually create a `.env` file with the following keys:
 
     ```env
-    PORT=8001
-    MONGODB_URI=mongodb+srv://...
+    PORT=8000
+    NODE_ENV=development
+    MONGODB_URI=
     CORS_ORIGIN=*
-    ACCESS_TOKEN_SECRET=your_super_secret_key
+    ACCESS_TOKEN_SECRET=
     ACCESS_TOKEN_EXPIRY=15m
-    REFRESH_TOKEN_SECRET=your_refresh_secret_key
+    REFRESH_TOKEN_SECRET=
     REFRESH_TOKEN_EXPIRY=7d
-    CLOUDINARY_CLOUD_NAME=...
-    CLOUDINARY_API_KEY=...
-    CLOUDINARY_API_SECRET=...
+    CLOUDINARY_NAME=
+    CLOUDINARY_API_KEY=
+    CLOUDINARY_API_SECRET=
     ```
 
 4.  **Run Development Server**
