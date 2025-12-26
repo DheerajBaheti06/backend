@@ -1,29 +1,33 @@
-import express from "express"
-import cors from "cors"
-import cookieParser from "cookie-parser"
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 
-const app = express()
+const app = express();
 
-app.use(cors({
-    origin: process.env.CORS_ORIGIN,
-    credentials: true
-}))
+// Security: Helmet for headers
+app.use(helmet());
 
-app.use(express.json({ limit: "16kb" }))
-app.use(express.urlencoded({ extended: true, limit: "16kb" }))
-app.use(express.static("public"))
-app.use(cookieParser())
+// CORS configuration
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*",
+    credentials: true,
+  })
+);
 
+// Middleware: Body parsing and cookies
+app.use(express.json({ limit: "16kb" }));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.static("public"));
+app.use(cookieParser());
 
-//routes import
-import userRouter from './routes/user.routes.js'
-import tweetRouter from "./routes/tweet.routes.js"
-// import healthRouter from "./routes/healthCheck.routes.js"
+// Routes Import
+import userRouter from "./routes/user.routes.js";
+import healthRouter from "./routes/healthCheck.routes.js";
 
-//routes declaration
-app.use("/api/v1/users", userRouter)
-app.use("/api/v1/tweets", tweetRouter)
-// app.use("/api/v1/healths", healthRouter)
-// http://localhost:8001/api/v1/users/register
+// Routes Declaration
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/health", healthRouter);
 
-export { app }
+export { app };
