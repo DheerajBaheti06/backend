@@ -1,17 +1,17 @@
 /*
-    * Concept: "Currying" + "Closures". 
-    * {ZodSchema} schema - Passed via CURRYING to inner function--->(req,res,next)
-    * 1. CURRYING: We pass the 'schema' first, so we can use the result as an Express middleware.
-    * 2. CLOSURE: The inner function (req, res, next) "remembers" the 'schema' from its 
-                  parent's scope even after the outer function has finished executing.
+* Concept: "Currying" + "Closures". 
+* {ZodSchema} schema - Passed via CURRYING to inner function--->(req,res,next)
+* 1. CURRYING: We pass the 'schema' first, so we can use the result as an Express middleware.
+* 2. CLOSURE: The inner function (req, res, next) "remembers" the 'schema' from its 
+parent's scope even after the outer function has finished executing.
 */
 export const validate = (schema) => (req, res, next) => {
   try {
-    schema.parse(req.body); // Accesses 'schema' via Closure
+    schema.parse(req.body);
     next();
   } catch (error) {
-    const errorMessage = error.errors?.[0]?.message || "Invalid Input";
-    throw new ApiError(400, errorMessage);
+    // Passing the full error to the global error handler
+    next(error); 
   }
 };
 

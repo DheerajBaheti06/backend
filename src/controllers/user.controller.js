@@ -8,11 +8,10 @@ import {
 import { User } from "../models/user.model.js";
 import { jwtVerify } from "jose";
 
-// Helper: Generate Access and Refresh tokens
+// ... [Token Generation Helper SAME] ...
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
-    // Jose is async, so we must await these
     const accessToken = await user.generateAccessToken();
     const refreshToken = await user.generateRefreshToken();
 
@@ -44,9 +43,12 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is required");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  // Pass folder name "avatars"
+  const avatar = await uploadOnCloudinary(avatarLocalPath, "avatars");
+
+  // Pass folder name "cover-images"
   const coverImage = coverImageLocalPath
-    ? await uploadOnCloudinary(coverImageLocalPath)
+    ? await uploadOnCloudinary(coverImageLocalPath, "cover-images")
     : null;
 
   if (!avatar) {
@@ -75,7 +77,6 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User registered Successfully"));
 });
 
-// Login user
 const LoginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -102,7 +103,8 @@ const LoginUser = asyncHandler(async (req, res) => {
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None", // Helps with cross-origin issues if needed
   };
 
   return res
@@ -122,7 +124,6 @@ const LoginUser = asyncHandler(async (req, res) => {
     );
 });
 
-// Logout user
 const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
@@ -136,7 +137,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
   };
 
   return res
@@ -146,8 +148,9 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User Logged Out"));
 });
 
-// Refresh Access Token
 const refreshAccessToken = asyncHandler(async (req, res) => {
+  console.log(req.cookies);
+
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
@@ -170,7 +173,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const options = {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "None",
     };
 
     const { accessToken, newRefreshToken } =
@@ -192,7 +196,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-// Change Current Password
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
@@ -211,14 +214,12 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
 
-// Get Current User Profile
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
 
-// Update Account Details
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body;
 
@@ -246,7 +247,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  // Pass folder name "avatars"
+  const avatar = await uploadOnCloudinary(avatarLocalPath, "avatars");
   if (!avatar.url) {
     throw new ApiError(400, "Error while uploading avatar");
   }
@@ -274,7 +276,11 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Cover image file is missing");
   }
 
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+  // Pass folder name "cover-images"
+  const coverImage = await uploadOnCloudinary(
+    coverImageLocalPath,
+    "cover-images"
+  );
   if (!coverImage.url) {
     throw new ApiError(400, "Error while uploading cover image");
   }

@@ -8,7 +8,7 @@ export const userRegisterschema = z.object({
 });
 
 export const userLoginSchema = z
-.object({
+  .object({
     email: z.string().optional(),
     username: z.string().optional(),
     password: z.string().min(8, "Password is required"),

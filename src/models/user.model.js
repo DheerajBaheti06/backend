@@ -61,7 +61,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 userSchema.methods.generateAccessToken = async function () {
   const secret = new TextEncoder().encode(process.env.ACCESS_TOKEN_SECRET);
   return await new SignJWT({
-    _id: this._id,
+    _id: this._id.toString(), /// requied else will be converted to object
     email: this.email,
     username: this.username,
     fullName: this.fullName,
@@ -76,7 +76,7 @@ userSchema.methods.generateAccessToken = async function () {
 userSchema.methods.generateRefreshToken = async function () {
   const secret = new TextEncoder().encode(process.env.REFRESH_TOKEN_SECRET);
   return await new SignJWT({
-    _id: this._id,
+    _id: this._id.toString(), /// requied else will be converted to object
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

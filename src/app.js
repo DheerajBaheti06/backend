@@ -25,9 +25,12 @@ app.use(cookieParser());
 // Routes Import
 import userRouter from "./routes/user.routes.js";
 import healthRouter from "./routes/healthCheck.routes.js";
+import { errorHandler } from "./middlewares/index.js";
 
 // Routes Declaration
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/health", healthRouter);
+
+app.use(errorHandler);
 
 export { app };
