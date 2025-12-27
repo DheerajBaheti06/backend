@@ -10,10 +10,7 @@ import {
   updateUserAvatar,
   updateUserCoverImage,
 } from "../controllers/user.controller.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { upload } from "../middlewares/multer.middleware.js";
-import validate from "../middlewares/validate.middlewares.js";
-import { authLimiter } from "../middlewares/authLimiter.middlewares.js";
+import { verifyJWT, upload, validate, authLimiter } from "../middlewares/index.js";
 import {
   userRegisterschema,
   userLoginSchema,

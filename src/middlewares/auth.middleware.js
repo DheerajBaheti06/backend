@@ -1,21 +1,23 @@
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-// verifyJWT means verified(i.e. login) hai ya nhi :-
+// Verify JWT Middleware
 export const verifyJWT = asyncHandler(async (req, _, next) => {
   try {
     const token =
-      (await req.cookies?.accessToken) ||
+      req.cookies?.accessToken ||
       req.header("Authorization")?.replace("Bearer ", "");
+
     if (!token) {
       throw new ApiError(401, "Unauthorized Request");
     }
 
-    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    const secret = new TextEncoder().encode(process.env.ACCESS_TOKEN_SECRET);
+    const { payload } = await jwtVerify(token, secret);
 
-    const user = await User.findById(decodedToken?._id).select(
+    const user = await User.findById(payload?._id).select(
       "-password -refreshToken"
     );
 
@@ -23,7 +25,7 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
       throw new ApiError(401, "Invalid Access Token");
     }
 
-    req.user = user; // we can access anything about user in controllers via "req.user.---"
+    req.user = user;
     next();
   } catch (error) {
     throw new ApiError(401, error?.message || "Invalid Access Token");

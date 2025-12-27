@@ -1,17 +1,20 @@
 import mongoose from "mongoose";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/ApiError.js";
+import {
+  ApiError,
+  ApiResponse,
+  asyncHandler,
+  uploadOnCloudinary,
+} from "../utils/index.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 
 // Helper: Generate Access and Refresh tokens
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
+    // Jose is async, so we must await these
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
@@ -153,12 +156,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 
   try {
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
+    const secret = new TextEncoder().encode(process.env.REFRESH_TOKEN_SECRET);
+    const { payload } = await jwtVerify(incomingRefreshToken, secret);
 
-    const user = await User.findById(decodedToken?._id);
+    const user = await User.findById(payload?._id);
     if (!user) {
       throw new ApiError(401, "Invalid refresh token");
     }
