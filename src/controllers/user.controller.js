@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 import {
   ApiError,
   ApiResponse,
@@ -300,6 +301,68 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Cover image updated successfully"));
 });
 
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Generate a random 6-digit number
+  const resetToken = crypto.randomInt(100000, 999999).toString();
+
+  // Save token and expiry (1 hour) to user
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordTokenExpiry = Date.now() + 3600000; // 1 hour
+  await user.save({ validateBeforeSave: false });
+
+  // Use the request host to construct the link (points to frontend usually, simplified here)
+  // Assuming the frontend is also on the same domain or locally
+  // Ideally this url should be an env var like process.env.FRONTEND_URL
+  const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+
+  const html = `
+    <p>You requested a password reset</p>
+    <p>Click the link below to reset your password:</p>
+    <a href="${resetLink}">${resetLink}</a>
+    <p>This link expires in 1 hour.</p>
+  `;
+
+  await sendEmail(user.email, "Reset Password", html);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password reset link sent successfully"));
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.params;
+
+  if (!token) {
+    throw new ApiError(400, "Invalid reset token");
+  }
+
+  const user = await User.findOne({
+    resetPasswordToken: token,
+    resetPasswordTokenExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new ApiError(400, "Invalid or expired reset token");
+  }
+
+  user.password = password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordTokenExpiry = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password reset successfully"));
+});
+
 export {
   registerUser,
   LoginUser,
@@ -310,4 +373,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  forgotPassword,
+  resetPassword,
 };

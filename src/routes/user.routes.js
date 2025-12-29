@@ -10,7 +10,12 @@ import {
   updateUserAvatar,
   updateUserCoverImage,
 } from "../controllers/user.controller.js";
-import { verifyJWT, upload, validate, authLimiter } from "../middlewares/index.js";
+import {
+  verifyJWT,
+  upload,
+  validate,
+  authLimiter,
+} from "../middlewares/index.js";
 import {
   userRegisterschema,
   userLoginSchema,
@@ -48,5 +53,12 @@ router
 router
   .route("/cover-image")
   .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+
+router
+  .route("/forgot-password")
+  .post(validate(forgotPasswordSchema), forgotPassword);
+router
+  .route("/reset-password/:token")
+  .post(validate(resetPasswordSchema), resetPassword);
 
 export default router;
