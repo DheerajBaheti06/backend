@@ -34,6 +34,7 @@
 - **Validation**: Zod
 - **Security**: Helmet, Express-Rate-Limit, BCrypt, JSONWebToken (JWT)
 - **File Storage**: Cloudinary (via Multer)
+- **Email Service**: Resend
 
 ---
 
@@ -45,13 +46,15 @@
 
 ### Authentication Endpoints
 
-| Method | Endpoint                 | Description                             | Access           |
-| :----- | :----------------------- | :-------------------------------------- | :--------------- |
-| `POST` | `/users/register`        | Register a new user with Avatar/Cover   | Public           |
-| `POST` | `/users/login`           | Login and receive Secure Cookies        | **Rate Limited** |
-| `POST` | `/users/logout`          | Clear session cookies                   | Partial          |
-| `POST` | `/users/refresh-token`   | Rotate Access Token using Refresh Token | Public           |
-| `POST` | `/users/change-password` | Update account password                 | **Protected**    |
+| Method | Endpoint                       | Description                             | Access           |
+| :----- | :----------------------------- | :-------------------------------------- | :--------------- |
+| `POST` | `/users/register`              | Register a new user with Avatar/Cover   | Public           |
+| `POST` | `/users/login`                 | Login and receive Secure Cookies        | **Rate Limited** |
+| `POST` | `/users/logout`                | Clear session cookies                   | Partial          |
+| `POST` | `/users/refresh-token`         | Rotate Access Token using Refresh Token | Public           |
+| `POST` | `/users/change-password`       | Update account password                 | **Protected**    |
+| `POST` | `/users/forgot-password`       | Send password reset email               | Public           |
+| `POST` | `/users/reset-password/:token` | Reset password using token              | Public           |
 
 ### User Management
 
@@ -100,6 +103,7 @@
     CLOUDINARY_NAME=
     CLOUDINARY_API_KEY=
     CLOUDINARY_API_SECRET=
+    RESEND_API_KEY=
     ```
 
 4.  **Run Development Server**
