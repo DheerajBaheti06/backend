@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { conf } from "./conf/index.js";
 
 const app = express();
 
@@ -11,7 +12,7 @@ app.use(helmet());
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: conf.corsOrigin,
     credentials: true,
   })
 );

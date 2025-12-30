@@ -1,3 +1,10 @@
+/**
+ * Higher-order function to handle asynchronous route handlers.
+ * Automatically catches errors and passes them to the Next() middleware.
+ *
+ * @param {Function} requestHandler - Async route handler function
+ * @returns {Function} Express middleware function
+ */
 const asyncHandler = (requestHandler) => {
   return (req, res, next) => {
     Promise.resolve(requestHandler(req, res, next)).catch((err) => next(err));
@@ -5,18 +12,3 @@ const asyncHandler = (requestHandler) => {
 };
 
 export { asyncHandler };
-
-// const asyncHandler = () => {}
-// const asyncHandler = (func) => () => {}
-// const asyncHandler = (func) => async () => {}
-
-// const asyncHandler = (fn) => async (req, res, next) => {
-//     try {
-//         await fn(req, res, next)
-//     } catch (error) {
-//         res.status(err.code || 500).json({
-//             success: false,
-//             message: err.message
-//         })
-//     }
-// }

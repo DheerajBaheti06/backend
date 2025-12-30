@@ -3,3 +3,4 @@ export { authLimiter } from "./authLimiter.middleware.js";
 export { validate } from "./validate.middleware.js";
 export { upload } from "./multer.middleware.js";
 export { errorHandler } from "./error.middleware.js";
+export { emailLimiter } from "./emailLimiter.middleware.js";

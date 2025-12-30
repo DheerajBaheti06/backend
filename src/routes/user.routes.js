@@ -9,23 +9,32 @@ import {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/user.controller.js";
 import {
   verifyJWT,
   upload,
   validate,
   authLimiter,
+  emailLimiter,
 } from "../middlewares/index.js";
 import {
   userRegisterschema,
   userLoginSchema,
   changePasswordSchema,
   updateAccountSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "../validators/auth.validators.js";
 
 const router = Router();
 
-// Public Routes
+/**
+ * @route   POST /users/register
+ * @desc    Register a new user with avatar and cover image.
+ * @access  Public
+ */
 router.route("/register").post(
   upload.fields([
     { name: "avatar", maxCount: 1 },
@@ -35,10 +44,23 @@ router.route("/register").post(
   registerUser
 );
 
+/**
+ * @route   POST /users/login
+ * @desc    Login user & get tokens.
+ * @access  Public (Rate Limited)
+ */
 router.route("/login").post(authLimiter, validate(userLoginSchema), LoginUser);
+
+/**
+ * @route   POST /users/refresh-token
+ * @desc    Refresh access token.
+ * @access  Public
+ */
 router.route("/refresh-token").post(refreshAccessToken);
 
-// Secured Routes
+/* -------------------------------------------------------------------------- */
+/*                               Secured Routes                               */
+/* -------------------------------------------------------------------------- */
 router.route("/logout").post(verifyJWT, logoutUser);
 router
   .route("/change-password")
@@ -56,7 +78,7 @@ router
 
 router
   .route("/forgot-password")
-  .post(validate(forgotPasswordSchema), forgotPassword);
+  .post(emailLimiter, validate(forgotPasswordSchema), forgotPassword);
 router
   .route("/reset-password/:token")
   .post(validate(resetPasswordSchema), resetPassword);

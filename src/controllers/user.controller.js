@@ -1,111 +1,50 @@
-import mongoose from "mongoose";
-import crypto from "crypto";
-import {
-  ApiError,
-  ApiResponse,
-  asyncHandler,
-  uploadOnCloudinary,
-} from "../utils/index.js";
-import { User } from "../models/user.model.js";
-import { jwtVerify } from "jose";
+import { ApiResponse, asyncHandler } from "../utils/index.js";
+import { conf } from "../conf/index.js";
+import { userService } from "../services/user.service.js";
+import { userService } from "../services/user.service.js";
 
-// ... [Token Generation Helper SAME] ...
-const generateAccessAndRefreshTokens = async (userId) => {
-  try {
-    const user = await User.findById(userId);
-    const accessToken = await user.generateAccessToken();
-    const refreshToken = await user.generateRefreshToken();
-
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    return { accessToken, refreshToken };
-  } catch (error) {
-    throw new ApiError(500, "Something went wrong while generating tokens");
-  }
-};
-
-// Register a new user
+/**
+ * Register a new user.
+ * - Delegate business logic to UserService.
+ */
 const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, username, password } = req.body;
 
-  const existedUser = await User.findOne({
-    $or: [{ username }, { email }],
-  });
-
-  if (existedUser) {
-    throw new ApiError(409, "User already exists");
-  }
-
+  // Extract file paths
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
-  if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is required");
-  }
-
-  // Pass folder name "avatars"
-  const avatar = await uploadOnCloudinary(avatarLocalPath, "avatars");
-
-  // Pass folder name "cover-images"
-  const coverImage = coverImageLocalPath
-    ? await uploadOnCloudinary(coverImageLocalPath, "cover-images")
-    : null;
-
-  if (!avatar) {
-    throw new ApiError(400, "Avatar file is required");
-  }
-
-  const user = await User.create({
+  // Call Service
+  const createdUser = await userService.registerUser({
     fullName,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
     email,
+    username,
     password,
-    username: username.toLowerCase(),
+    avatarLocalPath,
+    coverImageLocalPath,
   });
-
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering user");
-  }
 
   return res
     .status(201)
     .json(new ApiResponse(200, createdUser, "User registered Successfully"));
 });
 
+/**
+ * Login user.
+ */
 const LoginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  const user = await User.findOne({
-    $or: [{ username }, { email }],
+  const { user, accessToken, refreshToken } = await userService.loginUser({
+    email,
+    username,
+    password,
   });
-
-  if (!user) {
-    throw new ApiError(404, "User does not exist");
-  }
-
-  const isPasswordValid = await user.isPasswordCorrect(String(password));
-  if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials");
-  }
-
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
-  );
-
-  const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
 
   const options = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "None", // Helps with cross-origin issues if needed
+    secure: conf.nodeEnv === "production",
+    sameSite: "None",
   };
 
   return res
@@ -116,7 +55,7 @@ const LoginUser = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {
-          user: loggedInUser,
+          user,
           accessToken,
           refreshToken,
         },
@@ -126,19 +65,11 @@ const LoginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $unset: { refreshToken: 1 },
-    },
-    {
-      new: true,
-    }
-  );
+  await userService.logoutUser(req.user._id);
 
   const options = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: conf.nodeEnv === "production",
     sameSite: "None",
   };
 
@@ -150,65 +81,39 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  console.log(req.cookies);
-
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
-  if (!incomingRefreshToken) {
-    throw new ApiError(401, "Unauthorized request");
-  }
+  const { accessToken, refreshToken: newRefreshToken } =
+    await userService.refreshAccessToken(incomingRefreshToken);
 
-  try {
-    const secret = new TextEncoder().encode(process.env.REFRESH_TOKEN_SECRET);
-    const { payload } = await jwtVerify(incomingRefreshToken, secret);
+  const options = {
+    httpOnly: true,
+    secure: conf.nodeEnv === "production",
+    sameSite: "None",
+  };
 
-    const user = await User.findById(payload?._id);
-    if (!user) {
-      throw new ApiError(401, "Invalid refresh token");
-    }
-
-    if (incomingRefreshToken !== user?.refreshToken) {
-      throw new ApiError(401, "Refresh token is expired or used");
-    }
-
-    const options = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-    };
-
-    const { accessToken, newRefreshToken } =
-      await generateAccessAndRefreshTokens(user._id);
-
-    return res
-      .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed successfully"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid refresh token");
-  }
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", newRefreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { accessToken, refreshToken: newRefreshToken },
+        "Access token refreshed successfully"
+      )
+    );
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
-  const user = await User.findById(req.user?._id);
-  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
-
-  if (!isPasswordCorrect) {
-    throw new ApiError(400, "Invalid old password");
-  }
-
-  user.password = newPassword;
-  await user.save({ validateBeforeSave: false });
+  await userService.changeCurrentPassword(
+    req.user?._id,
+    oldPassword,
+    newPassword
+  );
 
   return res
     .status(200)
@@ -224,16 +129,10 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body;
 
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $set: {
-        fullName,
-        email,
-      },
-    },
-    { new: true }
-  ).select("-password");
+  const user = await userService.updateAccountDetails(req.user._id, {
+    fullName,
+    email,
+  });
 
   return res
     .status(200)
@@ -244,25 +143,10 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
 
-  if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is missing");
-  }
-
-  // Pass folder name "avatars"
-  const avatar = await uploadOnCloudinary(avatarLocalPath, "avatars");
-  if (!avatar.url) {
-    throw new ApiError(400, "Error while uploading avatar");
-  }
-
-  const user = await User.findByIdAndUpdate(
+  const user = await userService.updateUserAvatar(
     req.user?._id,
-    {
-      $set: {
-        avatar: avatar.url,
-      },
-    },
-    { new: true }
-  ).select("-password");
+    avatarLocalPath
+  );
 
   return res
     .status(200)
@@ -273,90 +157,37 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 const updateUserCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
 
-  if (!coverImageLocalPath) {
-    throw new ApiError(400, "Cover image file is missing");
-  }
-
-  // Pass folder name "cover-images"
-  const coverImage = await uploadOnCloudinary(
-    coverImageLocalPath,
-    "cover-images"
-  );
-  if (!coverImage.url) {
-    throw new ApiError(400, "Error while uploading cover image");
-  }
-
-  const user = await User.findByIdAndUpdate(
+  const user = await userService.updateUserCoverImage(
     req.user?._id,
-    {
-      $set: {
-        coverImage: coverImage.url,
-      },
-    },
-    { new: true }
-  ).select("-password");
+    coverImageLocalPath
+  );
 
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Cover image updated successfully"));
 });
 
+/**
+ * Forgot Password.
+ */
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-
-  // Generate a random 6-digit number
-  const resetToken = crypto.randomInt(100000, 999999).toString();
-
-  // Save token and expiry (1 hour) to user
-  user.resetPasswordToken = resetToken;
-  user.resetPasswordTokenExpiry = Date.now() + 3600000; // 1 hour
-  await user.save({ validateBeforeSave: false });
-
-  // Use the request host to construct the link (points to frontend usually, simplified here)
-  // Assuming the frontend is also on the same domain or locally
-  // Ideally this url should be an env var like process.env.FRONTEND_URL
-  const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
-
-  const html = `
-    <p>You requested a password reset</p>
-    <p>Click the link below to reset your password:</p>
-    <a href="${resetLink}">${resetLink}</a>
-    <p>This link expires in 1 hour.</p>
-  `;
-
-  await sendEmail(user.email, "Reset Password", html);
+  await userService.forgotPassword(email);
 
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "Password reset link sent successfully"));
 });
 
+/**
+ * Reset Password.
+ */
 const resetPassword = asyncHandler(async (req, res) => {
   const { password } = req.body;
   const { token } = req.params;
 
-  if (!token) {
-    throw new ApiError(400, "Invalid reset token");
-  }
-
-  const user = await User.findOne({
-    resetPasswordToken: token,
-    resetPasswordTokenExpiry: { $gt: Date.now() },
-  });
-
-  if (!user) {
-    throw new ApiError(400, "Invalid or expired reset token");
-  }
-
-  user.password = password;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordTokenExpiry = undefined;
-  await user.save({ validateBeforeSave: false });
+  await userService.resetPassword(token, password);
 
   return res
     .status(200)
