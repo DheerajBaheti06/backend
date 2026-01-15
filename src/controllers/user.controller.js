@@ -1,7 +1,6 @@
 import { ApiResponse, asyncHandler } from "../utils/index.js";
 import { conf } from "../conf/index.js";
 import { userService } from "../services/user.service.js";
-import { userService } from "../services/user.service.js";
 
 /**
  * Register a new user.
@@ -11,6 +10,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, username, password } = req.body;
 
   // Extract file paths
+  console.log("FILES RECEIVED:", req.files);
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
