@@ -41,7 +41,7 @@ const errorHandler = (err, req, res, next) => {
     statusCode: error.statusCode,
     message: error.message,
     errors: error.errors,
-    ...(conf.nodeEnv === "development" ? { stack: error.stack } : {}),
+    // ...(conf.nodeEnv === "development" ? { stack: error.stack } : {}),
   };
 
   return res.status(error.statusCode).json(response);
