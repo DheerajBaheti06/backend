@@ -1,4 +1,5 @@
-# 🛡️ Sentinel IAM Service
+# 🛡️ Sentinel IAM Service 
+Postman DOCS: https://documenter.getpostman.com/view/28907613/2sBXVhDWD7
 
 **A Production-Grade Identity & Access Management Microservice.**
 
